@@ -1,0 +1,161 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Lançar Faturamento — Manicure</title>
+<style>
+  :root{--plum:#7A1F4B;--rose:#C2185B;--pink:#F8BBD0;--blush:#FCE4EC;--ink:#3E2723;--ok:#2e7d32;--bad:#c62828;}
+  *{box-sizing:border-box;}
+  body{margin:0;font-family:"Century Gothic","Segoe UI",system-ui,sans-serif;color:var(--ink);
+       background:linear-gradient(135deg,#fde7f0,#fff,#fce4ec);min-height:100vh;padding:20px 12px;}
+  .wrap{max-width:460px;margin:0 auto;}
+  .card{background:#fff;border-radius:20px;box-shadow:0 10px 30px rgba(122,31,75,.13);overflow:hidden;margin-bottom:18px;}
+  header{background:linear-gradient(135deg,var(--plum),var(--rose));color:#fff;padding:24px;text-align:center;}
+  header h1{margin:0;font-size:1.4rem;}
+  header p{margin:6px 0 0;opacity:.9;font-style:italic;font-size:.9rem;}
+  form{padding:22px;}
+  label{display:block;font-weight:bold;color:var(--plum);margin:14px 0 6px;font-size:.92rem;}
+  input,textarea{width:100%;font:inherit;padding:14px;border:1.6px solid var(--pink);border-radius:13px;color:var(--ink);background:#fffafc;}
+  input:focus,textarea:focus{outline:none;border-color:var(--rose);box-shadow:0 0 0 3px rgba(194,24,91,.15);}
+  #valor{font-size:1.6rem;font-weight:bold;text-align:center;color:var(--rose);}
+  .btn{width:100%;margin-top:20px;background:linear-gradient(135deg,var(--rose),var(--plum));color:#fff;
+       border:none;border-radius:14px;padding:16px;font-size:1.1rem;font-weight:bold;cursor:pointer;}
+  .btn:active{transform:scale(.98);}
+  .btn[disabled]{opacity:.6;}
+  .toast{margin:0 22px 18px;padding:14px;border-radius:12px;font-weight:bold;text-align:center;display:none;}
+  .t-ok{background:#e6f4ea;color:var(--ok);display:block;}
+  .t-bad{background:#fdecea;color:var(--bad);display:block;}
+  h2{margin:0;background:var(--pink);color:var(--plum);padding:11px 22px;font-size:.95rem;}
+  ul{list-style:none;margin:0;padding:8px 22px 18px;}
+  li{display:flex;justify-content:space-between;padding:9px 0;border-bottom:1px solid #f3d4e1;font-size:.92rem;}
+  li:last-child{border:none;}
+  li .v{font-weight:bold;color:var(--rose);}
+  .links{padding:0 22px 20px;text-align:center;}
+  .links a{color:var(--rose);font-weight:bold;text-decoration:none;}
+  details{padding:0 22px 18px;}
+  summary{cursor:pointer;color:var(--plum);font-weight:bold;font-size:.85rem;}
+  .cfg{margin-top:10px;}
+  .cfg input{font-size:.8rem;}
+  .small{font-size:.78rem;color:#9a6;}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <div class="card">
+    <header>
+      <h1>Lançar Faturamento</h1>
+      <p>Manicure &amp; Pedicure — Adriana</p>
+    </header>
+    <div class="toast" id="toast"></div>
+    <form id="form">
+      <label for="data">Data</label>
+      <input type="date" id="data" required>
+      <label for="valor">Valor recebido (R$)</label>
+      <input type="text" id="valor" inputmode="decimal" placeholder="0,00" required>
+      <label for="desc">Descrição (opcional)</label>
+      <input type="text" id="desc" placeholder="ex.: unha em gel, pé e mão...">
+      <button class="btn" id="btn" type="submit">Lançar faturamento</button>
+    </form>
+  </div>
+
+  <div class="card">
+    <h2>Últimos lançamentos enviados</h2>
+    <ul id="lista"><li class="small" style="border:none;justify-content:center;">Nenhum lançamento ainda.</li></ul>
+    <div class="links"><a id="abrirPlanilha" href="#" target="_blank">Abrir a planilha completa ↗</a></div>
+  </div>
+
+  <div class="card">
+    <details id="cfgBox">
+      <summary>⚙ Configuração (preencher só na primeira vez)</summary>
+      <div class="cfg">
+        <label>Link do Web App (Apps Script)</label>
+        <input type="text" id="cfgUrl" placeholder="https://script.google.com/macros/s/.../exec">
+        <label>Link da planilha (para o botão acima)</label>
+        <input type="text" id="cfgSheet" placeholder="https://docs.google.com/spreadsheets/d/...">
+        <button class="btn" id="salvarCfg" type="button" style="margin-top:14px;font-size:.95rem;padding:12px;">Salvar configuração</button>
+        <p class="small">Esses links são fornecidos no passo a passo de instalação. Ficam salvos neste aparelho.</p>
+      </div>
+    </details>
+  </div>
+</div>
+
+<script>
+const K_URL="mei_webapp_url", K_SHEET="mei_sheet_url", K_LAST="mei_ultimos";
+const $=id=>document.getElementById(id);
+const brl=v=>v.toLocaleString("pt-BR",{style:"currency",currency:"BRL"});
+
+// data padrão = hoje
+$("data").value=new Date().toISOString().slice(0,10);
+
+// carregar config salva
+$("cfgUrl").value=localStorage.getItem(K_URL)||"";
+$("cfgSheet").value=localStorage.getItem(K_SHEET)||"";
+aplicarSheet();
+renderLista();
+if(!localStorage.getItem(K_URL)) $("cfgBox").open=true;
+
+function aplicarSheet(){
+  const s=localStorage.getItem(K_SHEET);
+  const a=$("abrirPlanilha");
+  if(s){a.href=s;a.style.display="inline";}else{a.style.display="none";}
+}
+
+$("salvarCfg").onclick=()=>{
+  localStorage.setItem(K_URL,$("cfgUrl").value.trim());
+  localStorage.setItem(K_SHEET,$("cfgSheet").value.trim());
+  aplicarSheet();
+  mostrar("Configuração salva ✓","ok");
+  $("cfgBox").open=false;
+};
+
+function parseBR(s){
+  if(!s)return 0;
+  s=String(s).replace(/[^\d,.-]/g,"").replace(/\./g,"").replace(",",".");
+  const n=parseFloat(s);return isNaN(n)?0:n;
+}
+
+function mostrar(msg,tipo){
+  const t=$("toast");t.textContent=msg;t.className="toast "+(tipo==="ok"?"t-ok":"t-bad");
+  clearTimeout(window._tt);window._tt=setTimeout(()=>t.className="toast",4000);
+}
+
+function renderLista(){
+  const arr=JSON.parse(localStorage.getItem(K_LAST)||"[]");
+  const ul=$("lista");
+  if(!arr.length){ul.innerHTML='<li class="small" style="border:none;justify-content:center;">Nenhum lançamento ainda.</li>';return;}
+  ul.innerHTML=arr.slice(0,8).map(e=>{
+    const d=e.data.split("-").reverse().join("/");
+    return `<li><span>${d}${e.desc?' — '+e.desc:''}</span><span class="v">${brl(e.valor)}</span></li>`;
+  }).join("");
+}
+
+$("form").addEventListener("submit",async e=>{
+  e.preventDefault();
+  const url=localStorage.getItem(K_URL);
+  const valor=parseBR($("valor").value);
+  const data=$("data").value;
+  const desc=$("desc").value.trim();
+  if(!url){mostrar("Configure o link do Web App primeiro (engrenagem abaixo).","bad");$("cfgBox").open=true;return;}
+  if(valor<=0){mostrar("Digite um valor válido.","bad");return;}
+  $("btn").disabled=true;$("btn").textContent="Enviando...";
+  try{
+    await fetch(url,{method:"POST",mode:"no-cors",
+      headers:{"Content-Type":"text/plain;charset=utf-8"},
+      body:JSON.stringify({data,valor,descricao:desc})});
+    // feedback otimista (no-cors não permite ler a resposta)
+    const arr=JSON.parse(localStorage.getItem(K_LAST)||"[]");
+    arr.unshift({data,valor,desc});
+    localStorage.setItem(K_LAST,JSON.stringify(arr.slice(0,20)));
+    renderLista();
+    mostrar("Lançado! "+brl(valor)+" em "+data.split("-").reverse().join("/"),"ok");
+    $("valor").value="";$("desc").value="";
+  }catch(err){
+    mostrar("Falha ao enviar. Verifique a internet e o link configurado.","bad");
+  }finally{
+    $("btn").disabled=false;$("btn").textContent="Lançar faturamento";
+  }
+});
+</script>
+</body>
+</html>
