@@ -65,49 +65,27 @@
     <div class="links"><a id="abrirPlanilha" href="#" target="_blank">Abrir a planilha completa ↗</a></div>
   </div>
 
-  <div class="card">
-    <details id="cfgBox">
-      <summary>⚙ Configuração (preencher só na primeira vez)</summary>
-      <div class="cfg">
-        <label>Link do Web App (Apps Script)</label>
-        <input type="text" id="cfgUrl" placeholder="https://script.google.com/macros/s/.../exec">
-        <label>Link da planilha (para o botão acima)</label>
-        <input type="text" id="cfgSheet" placeholder="https://docs.google.com/spreadsheets/d/...">
-        <button class="btn" id="salvarCfg" type="button" style="margin-top:14px;font-size:.95rem;padding:12px;">Salvar configuração</button>
-        <p class="small">Esses links são fornecidos no passo a passo de instalação. Ficam salvos neste aparelho.</p>
-      </div>
-    </details>
-  </div>
 </div>
 
 <script>
-const K_URL="mei_webapp_url", K_SHEET="mei_sheet_url", K_LAST="mei_ultimos";
+// Links gravados (não precisa configurar em nenhum aparelho)
+const WEBAPP_URL="https://script.google.com/macros/s/AKfycbzp4G4K184y_MYEYafUp1-5LayKSFUBZCkV-wyMLVAW_1LuhRE0pz47LqF7Zts7v2Pf/exec";
+const SHEET_URL="https://docs.google.com/spreadsheets/d/1hvSz38lM8UNEMXsJG2bqxmWIoASBRX-9vliqTynaBKU/edit";
+
+const K_LAST="mei_ultimos";
 const $=id=>document.getElementById(id);
 const brl=v=>v.toLocaleString("pt-BR",{style:"currency",currency:"BRL"});
 
 // data padrão = hoje
 $("data").value=new Date().toISOString().slice(0,10);
 
-// carregar config salva
-$("cfgUrl").value=localStorage.getItem(K_URL)||"";
-$("cfgSheet").value=localStorage.getItem(K_SHEET)||"";
 aplicarSheet();
 renderLista();
-if(!localStorage.getItem(K_URL)) $("cfgBox").open=true;
 
 function aplicarSheet(){
-  const s=localStorage.getItem(K_SHEET);
   const a=$("abrirPlanilha");
-  if(s){a.href=s;a.style.display="inline";}else{a.style.display="none";}
+  a.href=SHEET_URL;a.style.display="inline";
 }
-
-$("salvarCfg").onclick=()=>{
-  localStorage.setItem(K_URL,$("cfgUrl").value.trim());
-  localStorage.setItem(K_SHEET,$("cfgSheet").value.trim());
-  aplicarSheet();
-  mostrar("Configuração salva ✓","ok");
-  $("cfgBox").open=false;
-};
 
 function parseBR(s){
   if(!s)return 0;
@@ -132,11 +110,10 @@ function renderLista(){
 
 $("form").addEventListener("submit",async e=>{
   e.preventDefault();
-  const url=localStorage.getItem(K_URL);
+  const url=WEBAPP_URL;
   const valor=parseBR($("valor").value);
   const data=$("data").value;
   const desc=$("desc").value.trim();
-  if(!url){mostrar("Configure o link do Web App primeiro (engrenagem abaixo).","bad");$("cfgBox").open=true;return;}
   if(valor<=0){mostrar("Digite um valor válido.","bad");return;}
   $("btn").disabled=true;$("btn").textContent="Enviando...";
   try{
